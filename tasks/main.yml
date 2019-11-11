@@ -1,0 +1,41 @@
+---
+# tasks file for rds-mysql-backup-s3
+- name: Verify python dependencies for aws s3
+  pip: name={{ item }}
+  with_items:
+    - boto
+    - boto3
+    - botocore
+
+- name: Verify if backup dir is created
+  file: path={{ local_backup_dir }} state=directory
+
+- name: Create dump for DB using mysqldump
+  mysql_db:
+    login_host: "{{ db_host }}"
+    name: "{{ db_name }}"
+    login_user: "{{ mysql_user }}"
+    login_password: "{{ mysql_password }}"
+    state: dump
+    target: /{{ local_backup_dir }}/{{ env }}/{{ db_name }}-backup-{{ env }}-{{ ansible_date_time.date }}.sql
+
+- name: Copy tar file to s3 bucket
+  aws_s3:
+    aws_access_key: "{{ aws_access_key }}"
+    aws_secret_key: "{{ aws_secret_key }}"
+    bucket: "{{ bucket_name }}"
+    object: /database-backups/{{ env }}/backup-{{ env }}-{{ ansible_date_time.date }}.sql
+    src: /{{ local_backup_dir }}/{{ env }}/{{ db_name }}-backup-{{ env }}-{{ ansible_date_time.date }}.sql
+    mode: put
+
+- name: Find older backups
+  find:
+    paths: "{{ local_backup_dir }}/{{ env }}"
+    patterns: '*-backup-*.sql'
+  register: old_backups
+
+- name: Delete older backups
+  file:
+    path: "{{ item.path }}"
+    state: absent
+  with_items: "{{ old_backups.files }}"

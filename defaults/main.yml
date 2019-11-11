@@ -1,0 +1,11 @@
+---
+# defaults file for rds-mysql-backup-s3
+local_backup_dir: /backups
+env: test
+bucket_name: mybucket
+db_name: database
+db_host: localhost
+mysql_user: user
+mysql_password: password
+aws_access_key: aws_access_key
+aws_secret_key: aws_secret_key
